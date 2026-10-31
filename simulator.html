@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Group and Evolve：从单一始祖细胞出发，由个体神经网络、遗传变异、在线学习与遗传距离门控共同驱动的人工生命群体演化实验。"
+    />
+    <meta name="theme-color" content="#080b09" />
+    <title>Group and Evolve · 人工生命进化实验</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080c09'/%3E%3Cpath d='M11 5.5c0 5 10 5 10 10.5s-10 5.5-10 10.5M21 5.5c0 5-10 5-10 10.5s10 5.5 10 10.5M12 12h8M11 16h10M12 20h8' fill='none' stroke='%23d5ff75' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="stage" id="stage">
+        <canvas id="worldCanvas" aria-label="Group and Evolve 生态模拟视窗"></canvas>
+        <div class="stage-grain" aria-hidden="true"></div>
+
+        <header class="stage-header">
+          <a class="brand" href="index.html" title="返回 Group and Evolve 主页">
+            <div class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="21.2" stroke="currentColor" stroke-opacity=".28" />
+                <path
+                  d="M16.5 10.5c0 7.5 14.5 7 14.5 14.5s-14.5 7-14.5 12"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M31.5 10.5c0 7.5-14.5 7-14.5 14.5s14.5 7 14.5 12"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+                <path d="M18.2 17.5h10.4M16.8 24h14.4M18.2 30.5h10.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-opacity=".72" />
+              </svg>
+            </div>
+            <div class="brand-copy">
+              <p class="eyebrow">ARTIFICIAL LIFE · EVOLUTION LAB</p>
+              <h1>Group and Evolve</h1>
+              <p class="brand-subtitle">神经网络个体驱动的群体演化实验</p>
+            </div>
+          </a>
+
+          <div class="stage-stats" aria-label="实验实时统计">
+            <div class="stage-stat">
+              <span class="stage-stat-label">演化时间</span>
+              <strong id="statTime">0</strong>
+            </div>
+            <div class="stage-stat">
+              <span class="stage-stat-label">存活个体</span>
+              <strong id="statPopulation">0</strong>
+            </div>
+            <div class="stage-stat">
+              <span class="stage-stat-label">平均世代</span>
+              <strong id="statGeneration">1.00</strong>
+            </div>
+            <div class="run-state" id="runState">
+              <i aria-hidden="true"></i>
+              <span id="runStateLabel">演化中</span>
+            </div>
+          </div>
+        </header>
+
+        <div class="stage-bottom">
+          <div class="stage-caption">
+            <span class="caption-index">OBSERVATION DECK</span>
+            <span class="phase-chip" id="phaseChip"><i aria-hidden="true"></i><span id="phaseLabel">生产者期 · 单一起点</span></span>
+            <span class="caption-copy">点击个体进行解剖 · 拖拽平移 · 滚轮缩放</span>
+          </div>
+          <div class="legend">
+            <span><i class="legend-line" aria-hidden="true"></i>颜色由基因决定</span>
+            <span><i class="legend-ring" aria-hidden="true"></i>外环表示健康</span>
+          </div>
+        </div>
+
+        <div class="view-tools" aria-label="视窗工具">
+          <span class="zoom-readout" id="zoomReadout">1.00×</span>
+          <button class="tool-button" id="zoomOutBtn" type="button" aria-label="缩小视窗">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 8h9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+          <button class="tool-button" id="zoomInBtn" type="button" aria-label="放大视窗">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 8h9M8 3.5v9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+          <button class="tool-button" id="resetViewBtn" type="button" aria-label="重置视窗">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.4 6.2A5 5 0 1 1 3 9.4M3.4 2.8v3.6h3.6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="hover-card" id="hoverCard" hidden></div>
+
+        <aside class="specimen-card" id="specimenCard" hidden>
+          <header class="specimen-head">
+            <div class="specimen-ident">
+              <span class="gene-swatch" id="specimenSwatch" aria-hidden="true"></span>
+              <div>
+                <p class="eyebrow" id="specimenKicker">SPECIMEN #0000</p>
+                <h2 id="specimenTitle">个体解剖</h2>
+              </div>
+            </div>
+            <div class="specimen-head-actions">
+              <button class="mini-button" id="followBtn" type="button" title="将视窗锁定到该个体">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="3.3" stroke="currentColor" stroke-width="1.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <span>跟踪</span>
+              </button>
+              <button class="icon-button small" id="closeSpecimenBtn" type="button" aria-label="关闭个体解剖">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="vital-grid" id="vitalGrid"></div>
+          <div class="social-summary" id="socialSummary" aria-label="视域内的两两遗传关系"></div>
+
+          <div class="inspector-tabs" role="tablist" aria-label="个体详情">
+            <button class="inspector-tab is-active" id="neuroTab" type="button" role="tab" aria-selected="true" aria-controls="neuroPanel">神经网络</button>
+            <button class="inspector-tab" id="geneTab" type="button" role="tab" aria-selected="false" aria-controls="genePanel">基因组</button>
+            <span class="tab-spacer"></span>
+            <span class="tab-meta" id="tapMeta">60 → 24 → 3</span>
+          </div>
+
+          <div class="inspector-panel neuro-panel" id="neuroPanel" role="tabpanel" aria-labelledby="neuroTab">
+            <canvas id="brainCanvas" aria-label="个体神经网络激活与连接"></canvas>
+            <div class="brain-legend">
+              <span><i class="legend-node input" aria-hidden="true"></i>感知输入</span>
+              <span><i class="legend-node hidden" aria-hidden="true"></i>隐层激活</span>
+              <span><i class="legend-node output" aria-hidden="true"></i>决策输出</span>
+              <span class="brain-learning" id="brainLearning">ONLINE</span>
+            </div>
+            <div class="neural-readout" id="neuralReadout"></div>
+            <p class="panel-note" id="neuralNote">采样动作后，再用实际收益更新突触权重。</p>
+          </div>
+
+          <div class="inspector-panel gene-panel" id="genePanel" role="tabpanel" aria-labelledby="geneTab" hidden>
+            <div id="geneList"></div>
+            <p class="panel-note">子代继承当前权重与基因；变异幅度由全局进化速率决定。</p>
+          </div>
+        </aside>
+
+        <div class="empty-overlay" id="extinctOverlay" hidden>
+          <div class="empty-card">
+            <span class="eyebrow">ECOSYSTEM COLLAPSE</span>
+            <h2>生态已沉寂</h2>
+            <p id="extinctCopy">最后一个个体已经死亡。遗传信息仍保留在实验历史中。</p>
+            <div class="empty-stats" id="extinctStats"></div>
+            <button class="primary-button" id="extinctReseedBtn" type="button">重新播种</button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="sidebar">
+        <header class="sidebar-head">
+          <div>
+            <p class="eyebrow">EXPERIMENT CONTROL</p>
+            <h2>实验控制台</h2>
+          </div>
+          <div class="head-actions">
+            <a class="icon-button" href="index.html" aria-label="返回 Group and Evolve 主页" title="返回主页">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M3.8 9.4 10 4l6.2 5.4v6.2a.8.8 0 0 1-.8.8h-3.5v-4.1H8.1v4.1H4.6a.8.8 0 0 1-.8-.8V9.4Z" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+            <button class="icon-button" id="helpBtn" type="button" aria-label="打开模型说明">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <circle cx="10" cy="10" r="7.4" stroke="currentColor" stroke-width="1.2" />
+                <path d="M8.1 7.6a1.95 1.95 0 1 1 2.9 1.7c-.7.4-1 .43-1 1.35" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <circle cx="10" cy="13.55" r=".8" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="transport" aria-label="演化传输控制">
+          <button class="run-button" id="playBtn" type="button">
+            <span class="run-icon" id="runIcon" aria-hidden="true">
+              <svg class="icon-pause" viewBox="0 0 20 20" fill="none"><path d="M7 5v10M13 5v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <svg class="icon-play" viewBox="0 0 20 20" fill="none"><path d="M7 4.8v10.4L15.2 10 7 4.8Z" fill="currentColor"/></svg>
+            </span>
+            <span class="run-copy">
+              <strong id="playLabel">暂停演化</strong>
+              <small id="playHint">SPACE · 暂停</small>
+            </span>
+          </button>
+          <div class="transport-stack">
+            <button class="side-control" id="stepBtn" type="button" title="单步推进一个单位时间" aria-label="单步推进">
+              <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M5.5 4.8v8.4L12 9 5.5 4.8Z" fill="currentColor"/><path d="M13.2 4.5v9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </button>
+            <button class="side-control" id="resetBtn" type="button" title="以新种子重新播种；Shift 点击沿用当前种子" aria-label="重新播种">
+              <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4.5 7.2A5 5 0 1 1 4 10.3M4.5 3.9v3.6h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <div class="speed-row">
+          <span class="row-label">时间倍率 <small id="actualTps" title="当前时间倍率对应的目标 ticks/s；实际值受 CPU 性能限制">30 TICKS / S</small></span>
+          <div class="segmented" id="speedGroup" role="group" aria-label="时间倍率">
+            <button type="button" data-speed="0.5">0.5×</button>
+            <button type="button" data-speed="1" class="is-active">1×</button>
+            <button type="button" data-speed="2">2×</button>
+            <button type="button" data-speed="4">4×</button>
+            <button type="button" data-speed="10" title="10× 时间倍率；实际速度受设备性能限制">10×</button>
+            <button type="button" data-speed="20" title="20× 时间倍率；实际速度受设备性能限制">20×</button>
+          </div>
+        </div>
+
+        <section class="side-section">
+          <div class="section-heading">
+            <span>干预参数</span>
+            <span class="section-meta">GLOBAL</span>
+          </div>
+
+          <label class="slider-control" for="evolutionSlider">
+            <span class="slider-head">
+              <span>进化速率 <small>变异幅度</small></span>
+              <output id="evolutionValue">12%</output>
+            </span>
+            <input id="evolutionSlider" type="range" min="0" max="100" step="1" value="12" />
+            <span class="slider-scale"><span>稳定</span><span>剧烈</span></span>
+          </label>
+
+          <label class="slider-control" for="inertiaSlider">
+            <span class="slider-head">
+              <span>惯性 <small>速度保留比例</small></span>
+              <output id="inertiaValue">0.90</output>
+            </span>
+            <input id="inertiaSlider" type="range" min="70" max="97" step="1" value="90" />
+            <span class="slider-scale"><span>灵活</span><span>滑行</span></span>
+          </label>
+
+          <label class="slider-control" for="nearSlider">
+            <span class="slider-head">
+              <span>近缘阈值 <small>不攻击的遗传距离</small></span>
+              <output id="nearValue">0.16</output>
+            </span>
+            <input id="nearSlider" type="range" min="0" max="50" step="1" value="16" />
+            <span class="slider-scale"><span>严格</span><span>宽容</span></span>
+          </label>
+
+          <div class="toggle-list">
+            <button class="toggle-row" id="learningToggle" type="button" role="switch" aria-checked="true">
+              <span class="toggle-copy">
+                <span>个体在线学习</span>
+                <small>Actor-Critic 实时更新</small>
+              </span>
+              <span class="toggle-track" aria-hidden="true"><i></i></span>
+            </button>
+            <button class="toggle-row" id="visionToggle" type="button" role="switch" aria-checked="true">
+              <span class="toggle-copy">
+                <span>显示感知锥</span>
+                <small>仅选中个体可见</small>
+              </span>
+              <span class="toggle-track" aria-hidden="true"><i></i></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="side-section telemetry-section">
+          <div class="section-heading">
+            <span>生态脉搏</span>
+            <span class="chart-legend"><i class="pop"></i>种群 <i class="energy"></i>均能量</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="pulseChart" aria-label="种群与平均能量历史曲线"></canvas>
+            <span class="chart-max" id="chartMax">160</span>
+          </div>
+          <div class="metric-grid">
+            <div>
+              <span>平均能量</span>
+              <strong id="metricEnergy">0.0</strong>
+            </div>
+            <div>
+              <span>基因多样性</span>
+              <strong id="metricDiversity">0.0</strong>
+            </div>
+            <div>
+              <span>平均学习步数</span>
+              <strong id="metricLearning">0</strong>
+            </div>
+          </div>
+          <div class="mini-stats">
+            <span>累计出生 <strong id="metricBirths">0</strong></span>
+            <span>累计死亡 <strong id="metricDeaths">0</strong></span>
+            <span>攻击结算 <strong id="metricAttacks">0</strong></span>
+          </div>
+        </section>
+
+        <section class="side-section leaderboard-section">
+          <div class="section-heading">
+            <span>优势个体</span>
+            <span class="section-meta">能量 · 猎杀 · 世代</span>
+          </div>
+          <div class="leader-list" id="leaderList"></div>
+        </section>
+
+        <section class="side-section event-section">
+          <div class="section-heading">
+            <span>事件流</span>
+            <span class="live-label"><i aria-hidden="true"></i>LIVE</span>
+          </div>
+          <div class="event-feed" id="eventFeed"></div>
+        </section>
+
+        <footer class="sidebar-foot">
+          <div class="foot-status">
+            <i class="neural-indicator" id="neuralIndicator" aria-hidden="true"></i>
+            <span id="learningStatus">在线学习开启</span>
+          </div>
+          <button class="seed-chip" id="seedLabel" type="button" title="点击复制实验种子">SEED —</button>
+        </footer>
+        <div class="sidebar-credit">
+          <a href="index.html">← 返回主页</a>
+          <a href="https://www.ffstudio.site/" target="_blank" rel="noopener noreferrer">帧流工作室制作</a>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-shell" id="helpModal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <section class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <header class="help-head">
+          <div>
+            <p class="eyebrow">MODEL FIELD NOTES / 01</p>
+            <h2 id="helpTitle">这个生态如何运转</h2>
+          </div>
+          <button class="icon-button" id="closeHelpBtn" type="button" aria-label="关闭说明">
+            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="m4.5 4.5 9 9M13.5 4.5l-9 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </header>
+
+        <div class="help-grid" id="helpGrid">
+          <article class="help-card help-wide">
+            <span class="help-index">01 / MAIN LOOP</span>
+            <h3>一个单位时间内发生什么</h3>
+            <p>生态从一个始祖细胞开始。每个存活个体依次感知、决策、移动、获取自然能量、尝试繁殖、结算攻击，最后老化一单位时间。速度先乘惯性，再叠加神经网络力产生的加速度。</p>
+            <div class="formula-row">
+              <code>v′ = v · I + F / m + flow</code>
+              <code>p′ = p + v′</code>
+              <code>E′ = E + g<sub>E</sub></code>
+            </div>
+            <p class="help-fine">攻击会扣除目标生命并转移能量；寿命、最大生命与体型相关。能量达到“繁殖阈值”后，按成功率与不应期尝试产生一个变异子代。需求中的“繁殖速度”以能量阈值实现：阈值越低，繁殖越快。</p>
+            <p class="help-fine">始祖采用<strong>生产者型基因</strong>：攻击伤害与掠食收益接近下限、自然能量增长较高、繁殖阈值极低但单次繁殖成功率也偏低。它只是起点，后续可能被变异与选择推向掠食者。</p>
+          </article>
+
+          <article class="help-card">
+            <span class="help-index">02 / PERCEPTION</span>
+            <h3>它看见了什么</h3>
+            <p>以当前运动方向为前方，探测 <strong>142°</strong> 感知锥、<strong>255</strong> 单位内最近的 <strong>6</strong> 个个体。每个邻居提供方位、相对速度、生命、体型以及与自身基因组的遗传距离信号。</p>
+            <p class="help-fine">连同自身能量、血量、寿命、速度、质量、攻击基因、繁殖基因、边界距离和视域内近缘比例，组成 60 维输入。</p>
+          </article>
+
+          <article class="help-card">
+            <span class="help-index">03 / NEURAL POLICY</span>
+            <h3>它如何决定力与攻击</h3>
+            <p>一个 <strong>60 → 24 → 3</strong> 的全连接网络输出两个推进力分量和一个攻击 logit。加噪采样后得到实际动作，因此个体天然带有探索性。</p>
+            <div class="architecture">
+              <span>60 感知</span><i></i><span>24 tanh</span><i></i><span>F∥ F⊥ 攻击</span>
+            </div>
+          </article>
+
+          <article class="help-card help-wide">
+            <span class="help-index">04 / GENETIC DISTANCE &amp; PHENOTYPE</span>
+            <h3>个体之间只有基因差异</h3>
+            <p>每对个体独立计算六个性状基因归一化后的遗传距离。不存在任何分类 ID，也不存在“先分类再判断攻击”的步骤。颜色同样由基因参数直接计算，而不是由任何身份标签分配。</p>
+            <div class="distance-rule">
+              <span><i class="distance-rule-dot near"></i>遗传距离 ≤ 近缘阈值：这对个体互不攻击</span>
+              <span><i class="distance-rule-dot far"></i>遗传距离 &gt; 近缘阈值：这对个体可被对方攻击</span>
+            </div>
+            <p class="help-fine">颜色是基因的连续表型：暖红分量偏向攻击与掠食，绿色分量偏向自然增能，蓝紫分量偏向繁殖；体型另由质量决定。因此基因越接近，颜色也越接近。为了让轻微的基因漂移也能被看见，显示层会对色相差异做线性对比增强；它不会产生离散分类，也不参与攻击判定。</p>
+            <p class="help-fine">超过阈值只解锁攻击资格，是否真的出手仍由神经网络决定。选中个体后，绿色虚线连接阈值内近缘个体，珊瑚色连线连接阈值外远缘个体。阈值调低更易冲突，调高更包容。</p>
+          </article>
+
+          <article class="help-card help-wide">
+            <span class="help-index">05 / TWO TIMESCALES OF LEARNING</span>
+            <h3>两层学习，不断适应</h3>
+            <p><strong>个体内：</strong>用奖励（掠食收益、伤害、繁殖、存活、死亡）进行延迟一步的 Actor-Critic 更新，让突触在生命过程中持续变化。</p>
+            <p><strong>世代间：</strong>子代复制父代当前权重和基因，再按全局进化速率发生幅度不一的变异。死亡即从生态中移除。个体间关系则由两两基因距离与近缘阈值决定。</p>
+          </article>
+
+          <article class="help-card help-wide help-controls">
+            <span class="help-index">06 / CONTROLS</span>
+            <div class="shortcut-grid">
+              <span><kbd>Space</kbd>运行 / 暂停</span>
+              <span><kbd>S</kbd>单步推进</span>
+              <span><kbd>R</kbd>重新播种</span>
+              <span><kbd>V</kbd>感知锥</span>
+              <span><kbd>L</kbd>在线学习</span>
+              <span><kbd>Esc</kbd>关闭面板</span>
+            </div>
+            <p class="help-fine">参数改动即时生效；重新播种默认使用新种子，Shift + 点击重置可沿用当前种子。每次实验从单一起点重新开始，种群上限为 160。没有预设身份标签或阵营。</p>
+          </article>
+        </div>
+
+        <div class="help-scroll-cue" id="helpScrollCue" aria-hidden="true">
+          ↓ 向下滚动 · 查看学习与控制
+        </div>
+
+        <footer class="help-foot">
+          <span>GROUP AND EVOLVE · A SMALL ARTIFICIAL ECOSYSTEM</span>
+          <button class="primary-button compact" id="helpDoneBtn" type="button">返回生态</button>
+        </footer>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/brain.js"></script>
+    <script src="js/simulation.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
